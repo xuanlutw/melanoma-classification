@@ -5,13 +5,20 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import roc_curve, auc
 from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import StratifiedKFold
+from joblib import dump, load
+from img_process import *
+import sys
+import os
 
-def std(arr):
-    z   = np.mean(arr)
-    std = np.std(arr)
-    return [(x - z) / std for x in arr]
+def cal_std_parameter(arr):
+    res = [[np.mean(x), np.std(x)] for x in np.swapaxes(arr, 0, 1)]
+    np.save('std_para', res)
+    return res
 
-def two_classify():
+def cal_std(arr, std_para):
+    return np.asarray([list(map(lambda x: (x[0] - x[1][0]) / x[1][1], zip(x, std_para))) for x in arr])
+
+def train_two_classify():
     file = open('PH2Dataset/PH2.csv')
     data = file.readlines()
     y_data = np.zeros(len(data))
@@ -20,16 +27,10 @@ def two_classify():
             y_data[index] = 0
         else:
             y_data[index] = 1
-        '''
-        if (line.split(',')[1] == 'X'):
-            y_data[index] = 1
-        if (line.split(',')[2] == 'X'):
-            y_data[index] = 1
-        '''
     x_data = np.load('feature.npy')
 
-    for i in range(x_data.shape[1]):
-        x_data[:, i] = std(x_data[:, i])
+    std_para = cal_std_parameter(x_data)
+    x_data   = cal_std(x_data, std_para)
 
     kf = StratifiedKFold(n_splits = 5, shuffle = True)
     idx = 1
@@ -65,6 +66,10 @@ def two_classify():
         print('The result of gradient boost: %.4f, auc: %.4f' % (c3.score(x_valid, y_valid), auc(fpr_3, tpr_3)))
         print('The result of naive bayes:    %.4f, auc: %.4f' % (c4.score(x_valid, y_valid), auc(fpr_4, tpr_4)))
 
+    dump(c1, 'two1.joblib')
+    dump(c2, 'two2.joblib')
+    dump(c3, 'two3.joblib')
+    dump(c4, 'two4.joblib')
     print(c3.feature_importances_)
     plt.figure(1)
     plt.plot([0, 1], [0, 1], 'k--')
@@ -78,7 +83,7 @@ def two_classify():
     plt.legend(loc='best')
     plt.show()
 
-def three_classify():
+def train_three_classify():
     file = open('PH2Dataset/PH2.csv')
     data = file.readlines()
     y_data = np.zeros(len(data))
@@ -91,8 +96,8 @@ def three_classify():
             y_data[index] = 2
     x_data = np.load('feature.npy')
 
-    for i in range(x_data.shape[1]):
-        x_data[:, i] = std(x_data[:, i])
+    std_para = cal_std_parameter(x_data)
+    x_data   = cal_std(x_data, std_para)
 
     kf = StratifiedKFold(n_splits = 5, shuffle = True)
     idx = 1
@@ -119,9 +124,46 @@ def three_classify():
         print('The result of reandom forest: %.4f' % (c2.score(x_valid, y_valid)))
         print('The result of gradient boost: %.4f' % (c3.score(x_valid, y_valid)))
         print('The result of naive bayes:    %.4f' % (c4.score(x_valid, y_valid)))
-
+    dump(c1, 'three1.joblib')
+    dump(c2, 'three2.joblib')
+    dump(c3, 'three3.joblib')
+    dump(c4, 'three4.joblib')
     print(c3.feature_importances_)
 
-two_classify()
-three_classify()
+def valid(img_path):
+    std_para = np.load('std_para.npy')
+    segmentation(img_path, 'valid')
+    feat = [feature_extraction(img_path, "data/valid-bw.bmp")]
+    std_para = np.load('std_para.npy')
+    feat = cal_std(feat, std_para)
+    c1 = load('two1.joblib')
+    c2 = load('two2.joblib')
+    c3 = load('two3.joblib')
+    c4 = load('two4.joblib')
+    to_name = (lambda x: "melanoma" if x == 0 else "not melanoma")
+    print("===== Two =====")
+    print('The result of logisitic reg : %s' % to_name(c1.predict(feat)))
+    print('The result of reandom forest: %s' % to_name(c2.predict(feat)))
+    print('The result of gradient boost: %s' % to_name(c3.predict(feat)))
+    print('The result of naive bayes:    %s' % to_name(c4.predict(feat)))
 
+    c1 = load('three1.joblib')
+    c2 = load('three2.joblib')
+    c3 = load('three3.joblib')
+    c4 = load('three4.joblib')
+    to_name = (lambda x: "common nevus" if x == 0 else ("atypical nevus" if x == 1 else "melanoma"))
+    print("===== Three =====")
+    print('The result of logisitic reg : %s' % to_name(c1.predict(feat)))
+    print('The result of reandom forest: %s' % to_name(c2.predict(feat)))
+    print('The result of gradient boost: %s' % to_name(c3.predict(feat)))
+    print('The result of naive bayes:    %s' % to_name(c4.predict(feat)))
+
+
+#train_two_classify()
+#train_three_classify()
+#valid('PH2Dataset/PH2 Dataset images/IMD024/IMD024_Dermoscopic_Image/IMD024.bmp')
+try:
+    os.mkdir('data')
+except:
+    pass
+valid(sys.argv[1])
