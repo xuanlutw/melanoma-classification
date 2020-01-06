@@ -4,10 +4,7 @@ import matplotlib.cm as cm
 from math import sqrt
 from scipy.ndimage import gaussian_filter, median_filter, binary_fill_holes
 from scipy.stats import kurtosis, skew
-from skimage import filters, segmentation, measure, morphology, color, exposure
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.svm import SVC
+from skimage import filters, measure, morphology, color, exposure
 
 def segmentation(im_path, name):
     img   = plt.imread(im_path)
@@ -61,7 +58,7 @@ def segmentation(im_path, name):
     plt.imshow(bw, cmap='Greys')
     plt.axis('off')
     plt.savefig("./data/%s-flow.png" % name)
-    # plt.show()
+    plt.show()
     
 def IOU(im1_path, im2_path):
     im1 = plt.imread(im1_path)
@@ -184,4 +181,4 @@ def feat_all():
 #seg_all()
 #print(feature_extraction("PH2Dataset/PH2 Dataset images/IMD003/IMD003_Dermoscopic_Image/IMD003.bmp", "data/IMD003-bw.bmp"))
 #print(feature_extraction("PH2Dataset/PH2 Dataset images/IMD003/IMD003_Dermoscopic_Image/IMD003.bmp", "data/IMD003-bw.bmp"))
-feat_all()
+#feat_all()
